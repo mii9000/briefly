@@ -126,7 +126,7 @@ async function updateLinkedTask(
       await updateProposalMessage(updated, deps.slack, deps.db);
     if (change.type === 'reassign' && updated.pendingOwnerId && event.ts) {
       const message = reassignmentMessage(updated, event.user);
-      await deps.db.claimDelivery({
+      const claimed = await deps.db.claimDelivery({
         key: `reassignment:${task.id}:${change.ownerId}:${event.ts}`,
         channelId: task.channelId,
         taskId: task.id,
@@ -134,6 +134,9 @@ async function updateLinkedTask(
         text: message.text,
         blocks: message.blocks,
       });
+      console.info(
+        `processSlackEvent: reassignment delivery ${claimed ? 'claimed' : 'already claimed'}`,
+      );
     }
   }
   return event.channel_type === 'im' || change !== null;

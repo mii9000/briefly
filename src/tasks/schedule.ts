@@ -87,6 +87,9 @@ export async function deliver(
   now = new Date(),
 ): Promise<void> {
   try {
+    console.info(
+      `deliver: sending ${item.key} to ${item.recipientId ?? item.channelId}`,
+    );
     const channel = item.recipientId
       ? (await slack.conversations.open({ users: item.recipientId })).channel
           ?.id
@@ -112,12 +115,14 @@ export async function deliver(
       now,
       response.ts,
     );
+    console.info(`deliver: sent ${item.key}`);
   } catch (error) {
     const status =
       error instanceof WebAPIPlatformError ||
       error instanceof WebAPIRateLimitedError
         ? 'failed'
         : 'uncertain';
+    console.error(`deliver: ${item.key} ${status}`, error);
     await db.markDelivery(item.key, status);
   }
 }
