@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { createOpenRouterModel } from '../src/tasks/extract.js';
 import {
   applyReassignmentDecision,
   applyTaskUpdate,
@@ -83,6 +84,46 @@ describe('task updates', () => {
       { type: 'progress' },
     );
     await expect(parseTaskReply('thanks', task, model)).resolves.toBeNull();
+    expect(model.complete).toHaveBeenNthCalledWith(
+      1,
+      expect.any(String),
+      'reply',
+    );
+  });
+
+  it('requests the reply schema from OpenRouter when parsing task replies', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  type: 'confirm',
+                  title: null,
+                  dueAt: null,
+                  ownerId: null,
+                }),
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      const model = createOpenRouterModel('api-key');
+      await model.complete('{}', 'reply');
+
+      const request = JSON.parse(fetchMock.mock.calls[0]![1]!.body as string);
+      expect(request.response_format.json_schema.name).toBe(
+        'briefly_task_reply',
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('only proposes reassignment to a Slack user mentioned in the owner reply', async () => {

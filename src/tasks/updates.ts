@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { Db } from '../db/queries.js';
+import type { ModelClient } from './extract.js';
 import type { Task, TaskChange } from '../types.js';
 
 const replySchema = z.object({
@@ -16,8 +17,6 @@ const replySchema = z.object({
   dueAt: z.string().nullable().optional(),
   ownerId: z.string().min(1).nullable().optional(),
 });
-
-type ModelClient = { complete(prompt: string): Promise<unknown> };
 
 export async function applyTaskUpdate(
   taskId: string,
@@ -51,7 +50,7 @@ export async function parseTaskReply(
   model: ModelClient,
 ): Promise<TaskChange | null> {
   const result = replySchema.parse(
-    await model.complete(JSON.stringify({ task, reply: text })),
+    await model.complete(JSON.stringify({ task, reply: text }), 'reply'),
   );
   if (result.type === 'none') return null;
   if (result.type === 'edit') {
