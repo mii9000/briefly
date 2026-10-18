@@ -19,9 +19,10 @@ const task: Task = {
 describe('proposal messages', () => {
   it('offers only owner actions for assigned tasks and a claim for unassigned tasks', () => {
     const actionIds = (message: ReturnType<typeof proposalMessage>) =>
-      (message.blocks[1]!.elements as Array<{ action_id: string }>).map(
-        ({ action_id }) => action_id,
-      );
+      (
+        message.blocks.find((block) => block.type === 'actions')?.elements as
+          Array<{ action_id: string }> | undefined
+      )?.map(({ action_id }) => action_id) ?? [];
 
     expect(
       actionIds(proposalMessage({ ...task, ownerId: 'U1' }, 'source')),
@@ -35,6 +36,15 @@ describe('proposal messages', () => {
         ),
       ),
     ).toEqual([]);
+  });
+
+  it('omits the actions block when a task is rejected', () => {
+    const message = proposalMessage(
+      { ...task, ownerId: 'U1', status: 'rejected' },
+      'source',
+    );
+
+    expect(message.blocks.map(({ type }) => type)).toEqual(['section']);
   });
 
   it('keeps task IDs out of visible proposal and reassignment text', () => {

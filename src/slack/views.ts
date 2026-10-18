@@ -24,10 +24,7 @@ export function proposalMessage(task: Task, sourceLink: string) {
           text: `*${task.title}*\nOwner: ${owner} · Due: ${due} · <${sourceLink}|source>`,
         },
       },
-      {
-        type: 'actions',
-        elements: [...actions],
-      },
+      ...(actions.length ? [{ type: 'actions', elements: actions }] : []),
     ],
   };
 }
