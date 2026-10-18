@@ -17,6 +17,26 @@ const task: Task = {
 };
 
 describe('proposal messages', () => {
+  it('offers only owner actions for assigned tasks and a claim for unassigned tasks', () => {
+    const actionIds = (message: ReturnType<typeof proposalMessage>) =>
+      (message.blocks[1]!.elements as Array<{ action_id: string }>).map(
+        ({ action_id }) => action_id,
+      );
+
+    expect(
+      actionIds(proposalMessage({ ...task, ownerId: 'U1' }, 'source')),
+    ).toEqual(['task_edit', 'task_reassign', 'task_reject']);
+    expect(actionIds(proposalMessage(task, 'source'))).toEqual(['task_claim']);
+    expect(
+      actionIds(
+        proposalMessage(
+          { ...task, ownerId: 'U1', status: 'rejected' },
+          'source',
+        ),
+      ),
+    ).toEqual([]);
+  });
+
   it('keeps task IDs out of visible proposal and reassignment text', () => {
     const messages = [
       proposalMessage(task, 'https://slack.test/source'),
@@ -46,7 +66,7 @@ describe('proposal messages', () => {
           (block.elements ?? []).map((element) => element.value),
         ),
       ),
-    ).toEqual([task.id, task.id, task.id, task.id, task.id, task.id]);
+    ).toEqual([task.id, task.id, task.id]);
   });
 
   it('finds an existing proposal card and refreshes its task details', async () => {

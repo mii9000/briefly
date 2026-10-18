@@ -5,6 +5,15 @@ export function proposalMessage(task: Task, sourceLink: string) {
   const due = task.dueAt
     ? new Date(task.dueAt).toLocaleDateString('en-GB')
     : 'date unknown';
+  const actions = ['complete', 'rejected'].includes(task.status)
+    ? []
+    : task.ownerId
+      ? [
+          button('task_edit', 'Correct', task.id),
+          button('task_reassign', 'Suggest reassignment', task.id),
+          button('task_reject', 'Reject', task.id, 'danger'),
+        ]
+      : [button('task_claim', 'Claim task', task.id, 'primary')];
   return {
     text: `Briefly proposed: ${task.title} (${owner}, ${due})`,
     blocks: [
@@ -17,12 +26,7 @@ export function proposalMessage(task: Task, sourceLink: string) {
       },
       {
         type: 'actions',
-        elements: [
-          button('task_confirm', 'Confirm', task.id, 'primary'),
-          button('task_edit', 'Correct', task.id),
-          button('task_reassign', 'Suggest reassignment', task.id),
-          button('task_reject', 'Reject', task.id, 'danger'),
-        ],
+        elements: [...actions],
       },
     ],
   };

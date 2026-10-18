@@ -26,6 +26,10 @@ export async function applyTaskUpdate(
 ): Promise<Task> {
   const task = await db.getTask(taskId);
   if (!task) throw new Error('Task not found');
+  if (!task.ownerId && change.type !== 'claim')
+    throw new Error('Claim this task first');
+  if (change.type === 'claim' && task.ownerId)
+    throw new Error('Task already has an owner');
   if (task.ownerId && task.ownerId !== actorId)
     throw new Error('Only the owner can update this task');
   const updated = await db.updateTask(taskId, actorId, change);

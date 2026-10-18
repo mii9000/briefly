@@ -2,6 +2,68 @@ import { describe, expect, it, vi } from 'vitest';
 import { createDb } from '../src/db/queries.js';
 
 describe('database deliveries', () => {
+  it('does not let an unowned task be reassigned without first being claimed', async () => {
+    const query = vi.fn().mockResolvedValue({
+      rows: [
+        {
+          id: 'task-1',
+          channel_id: 'C1',
+          source_ts: '101',
+          title: 'Task',
+          owner_id: null,
+          due_at: null,
+          status: 'open',
+          last_updated_at: '2026-10-18T14:41:00.000Z',
+          last_dm_at: null,
+          escalated_at: null,
+        },
+      ],
+    });
+    const db = createDb({ query } as never);
+
+    await expect(
+      db.updateTask('task-1', 'U1', { type: 'reassign', ownerId: 'U2' }),
+    ).resolves.toBeNull();
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
+  it('assigns an unowned task to the member who claims it', async () => {
+    const row = {
+      id: 'task-1',
+      channel_id: 'C1',
+      source_ts: '101',
+      title: 'Task',
+      owner_id: null,
+      due_at: null,
+      status: 'open',
+      last_updated_at: '2026-10-18T14:41:00.000Z',
+      last_dm_at: null,
+      escalated_at: null,
+    };
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [row] })
+      .mockImplementationOnce(async (_sql, values) => ({
+        rows: [{ ...row, owner_id: values[4] }],
+      }));
+    const db = createDb({ query } as never);
+
+    await expect(
+      db.updateTask('task-1', 'U2', { type: 'claim' }),
+    ).resolves.toMatchObject({ ownerId: 'U2' });
+    expect(query.mock.calls[1]![1]).toEqual([
+      'task-1',
+      'U2',
+      'Task',
+      null,
+      'U2',
+      'open',
+      false,
+      null,
+      true,
+    ]);
+  });
+
   it('marks a confirmed task as in progress', async () => {
     const row = {
       id: 'task-1',

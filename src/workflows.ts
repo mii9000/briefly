@@ -11,7 +11,7 @@ import {
 } from './slack/history.js';
 import { proposalMessage, reassignmentMessage } from './slack/views.js';
 import { updateProposalMessage } from './slack/proposals.js';
-import { isChannelMember, loadMemberDirectory } from './slack/members.js';
+import { loadMemberDirectory } from './slack/members.js';
 import { applyTaskUpdate, parseTaskReply } from './tasks/updates.js';
 import {
   createOpenRouterModel,
@@ -112,12 +112,7 @@ async function updateLinkedTask(
     );
   }
   if (!task) return false;
-  if (
-    !task.ownerId &&
-    event.channel_type === 'im' &&
-    !(await isChannelMember(task.channelId, event.user, deps.slack))
-  )
-    return true;
+  if (!task.ownerId || task.ownerId !== event.user) return true;
   console.info('processSlackEvent: parsing task reply');
   const replyStarted = Date.now();
   const change = await parseTaskReply(event.text ?? '', task, deps.model);

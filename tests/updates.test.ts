@@ -52,7 +52,7 @@ describe('task updates', () => {
     expect(db.updateTask).toHaveBeenCalledTimes(1);
   });
 
-  it('proposes an unassigned task to a channel member without changing owner yet', async () => {
+  it('requires an unassigned task to be claimed before reassignment', async () => {
     const db = {
       getTask: vi.fn(async () => ({ ...task, ownerId: null })),
       updateTask: vi.fn(async () => ({ ...task, pendingOwnerId: 'U2' })),
@@ -60,7 +60,34 @@ describe('task updates', () => {
 
     await expect(
       applyTaskUpdate(task.id, 'U1', { type: 'reassign', ownerId: 'U2' }, db),
-    ).resolves.toMatchObject({ ownerId: 'U1', pendingOwnerId: 'U2' });
+    ).rejects.toThrow('Claim this task first');
+    expect(db.updateTask).not.toHaveBeenCalled();
+  });
+
+  it('lets a channel member claim an unassigned task', async () => {
+    const db = {
+      getTask: vi.fn(async () => ({ ...task, ownerId: null })),
+      updateTask: vi.fn(async () => ({ ...task, ownerId: 'U2' })),
+    };
+
+    await expect(
+      applyTaskUpdate(task.id, 'U2', { type: 'claim' }, db),
+    ).resolves.toMatchObject({ ownerId: 'U2' });
+    expect(db.updateTask).toHaveBeenCalledWith(task.id, 'U2', {
+      type: 'claim',
+    });
+  });
+
+  it('requires an unassigned task to be claimed before correction or rejection', async () => {
+    const db = {
+      getTask: vi.fn(async () => ({ ...task, ownerId: null })),
+      updateTask: vi.fn(),
+    };
+
+    await expect(
+      applyTaskUpdate(task.id, 'U2', { type: 'reject' }, db),
+    ).rejects.toThrow('Claim this task first');
+    expect(db.updateTask).not.toHaveBeenCalled();
   });
 
   it('lets only the proposed owner accept a reassignment', async () => {
@@ -92,6 +119,24 @@ describe('task updates', () => {
       ),
     ).resolves.toEqual({ type: 'reassign', ownerId: 'U2' });
     expect(model.complete).not.toHaveBeenCalled();
+  });
+
+  it('corrects the task title and due date from an owner reply', async () => {
+    const model = {
+      complete: vi.fn().mockResolvedValue({
+        type: 'edit',
+        title: 'Send final report',
+        dueAt: '2026-10-31T00:00:00.000Z',
+      }),
+    };
+
+    await expect(
+      parseTaskReply('Correct title and due date', task, model),
+    ).resolves.toEqual({
+      type: 'edit',
+      title: 'Send final report',
+      dueAt: '2026-10-31T00:00:00.000Z',
+    });
   });
 
   it('treats a single different user mention as the suggested owner', async () => {

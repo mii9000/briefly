@@ -6,6 +6,7 @@ import {
   applyTaskUpdate,
   renderTaskList,
 } from '../tasks/updates.js';
+import { updateProposalMessage } from './proposals.js';
 
 type Dependencies = {
   db: Db;
@@ -116,12 +117,13 @@ export function createSlackApp(deps: Dependencies) {
       action.action_id === 'task_reassign_decline'
     ) {
       try {
-        await applyReassignmentDecision(
+        const updated = await applyReassignmentDecision(
           action.value,
           body.user.id,
           action.action_id === 'task_reassign_accept',
           deps.db,
         );
+        await updateProposalMessage(updated, client, deps.db);
         await client.chat.postEphemeral({
           channel: channelId,
           user: body.user.id,
@@ -142,6 +144,57 @@ export function createSlackApp(deps: Dependencies) {
       }
       return;
     }
+    const task = await deps.db.getTask(action.value);
+    if (!task) {
+      await client.chat.postEphemeral({
+        channel: channelId,
+        user: body.user.id,
+        text: 'This task is no longer available.',
+      });
+      return;
+    }
+    if (task.ownerId && task.ownerId !== body.user.id) {
+      await client.chat.postEphemeral({
+        channel: channelId,
+        user: body.user.id,
+        text: `Only <@${task.ownerId}> can update this task.`,
+      });
+      return;
+    }
+    if (!task.ownerId && action.action_id !== 'task_claim') {
+      await client.chat.postEphemeral({
+        channel: channelId,
+        user: body.user.id,
+        text: 'Claim this task before changing it.',
+      });
+      return;
+    }
+    if (action.action_id === 'task_claim') {
+      try {
+        const updated = await applyTaskUpdate(
+          task.id,
+          body.user.id,
+          { type: 'claim' },
+          deps.db,
+        );
+        await updateProposalMessage(updated, client, deps.db);
+        await client.chat.postEphemeral({
+          channel: channelId,
+          user: body.user.id,
+          text: 'Task assigned to you.',
+        });
+      } catch (error) {
+        await client.chat.postEphemeral({
+          channel: channelId,
+          user: body.user.id,
+          text:
+            error instanceof Error
+              ? error.message
+              : 'Could not claim this task.',
+        });
+      }
+      return;
+    }
     if (
       action.action_id === 'task_edit' ||
       action.action_id === 'task_reassign'
@@ -149,7 +202,10 @@ export function createSlackApp(deps: Dependencies) {
       await client.chat.postEphemeral({
         channel: channelId,
         user: body.user.id,
-        text: `Reply in this task’s thread with your correction or @mention the suggested owner.`,
+        text:
+          action.action_id === 'task_edit'
+            ? 'Reply in this task’s thread with the corrected title and/or due date.'
+            : 'Reply in this task’s thread and @mention the person who should own it. They must accept.',
       });
       return;
     }
@@ -163,7 +219,13 @@ export function createSlackApp(deps: Dependencies) {
             : null;
     if (!change) return;
     try {
-      await applyTaskUpdate(action.value, body.user.id, change, deps.db);
+      const updated = await applyTaskUpdate(
+        action.value,
+        body.user.id,
+        change,
+        deps.db,
+      );
+      await updateProposalMessage(updated, client, deps.db);
       await client.chat.postEphemeral({
         channel: channelId,
         user: body.user.id,

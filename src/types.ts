@@ -32,6 +32,7 @@ export type Task = {
 };
 
 export type TaskChange =
+  | { type: 'claim' }
   | { type: 'confirm' }
   | { type: 'edit'; title?: string; dueAt?: string | null }
   | { type: 'reassign'; ownerId: string }

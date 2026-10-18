@@ -133,7 +133,13 @@ export function createDb(pool: Pool) {
     },
     async updateTask(taskId: string, actorId: string, change: TaskChange) {
       const task = await this.getTask(taskId);
-      if (!task || (task.ownerId && task.ownerId !== actorId)) return null;
+      if (
+        !task ||
+        (task.ownerId
+          ? task.ownerId !== actorId || change.type === 'claim'
+          : change.type !== 'claim')
+      )
+        return null;
       const values = {
         title:
           change.type === 'edit' ? (change.title ?? task.title) : task.title,
@@ -141,7 +147,12 @@ export function createDb(pool: Pool) {
           change.type === 'edit' && 'dueAt' in change
             ? change.dueAt
             : task.dueAt,
-        ownerId: change.type === 'reassign' ? change.ownerId : task.ownerId,
+        ownerId:
+          change.type === 'claim'
+            ? actorId
+            : change.type === 'reassign'
+              ? change.ownerId
+              : task.ownerId,
         pendingOwnerId:
           change.type === 'reassign'
             ? change.ownerId
@@ -160,7 +171,8 @@ export function createDb(pool: Pool) {
          owner_id = CASE WHEN $7::boolean THEN owner_id ELSE $5 END,
          pending_owner_id = $8, status = $6,
          last_updated_at = now(), last_dm_at = NULL, escalated_at = NULL
-         WHERE id = $1 AND (owner_id IS NULL OR owner_id = $2) RETURNING *`,
+         WHERE id = $1 AND (($9::boolean AND owner_id IS NULL)
+           OR (NOT $9::boolean AND owner_id = $2)) RETURNING *`,
         [
           taskId,
           actorId,
@@ -170,6 +182,7 @@ export function createDb(pool: Pool) {
           values.status,
           change.type === 'reassign',
           values.pendingOwnerId,
+          change.type === 'claim',
         ],
       );
       return rows[0] ? rowToTask(rows[0]) : null;
