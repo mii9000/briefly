@@ -87,6 +87,33 @@ describe('task extraction', () => {
     ).resolves.toMatchObject([{ dueAt: null }]);
   });
 
+  it('does not treat a task start date as its due date', async () => {
+    const startingMessage = {
+      ...message,
+      ts: '1792362433.540039',
+      text: 'Ibrahim says he will lead the LlamaIndex pilot starting next week.',
+    };
+    const model = {
+      complete: vi.fn().mockResolvedValue({
+        proposals: [
+          {
+            sourceTs: startingMessage.ts,
+            title: 'Lead LlamaIndex pilot',
+            ownerId: 'U1',
+            dueAt: '2026-10-25T00:00:00.000Z',
+            dueDateEvidence: 'next week',
+          },
+        ],
+      }),
+    };
+
+    await expect(
+      extractTasks([startingMessage], [], model, [
+        { id: 'U1', names: ['Ibrahim'] },
+      ]),
+    ).resolves.toMatchObject([{ ownerId: 'U1', dueAt: null }]);
+  });
+
   it('keeps a due date when its exact source evidence resolves to that date', async () => {
     const datedMessage = {
       ...message,

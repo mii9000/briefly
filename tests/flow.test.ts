@@ -28,6 +28,52 @@ const task: Task = {
 };
 
 describe('Briefly local flow', () => {
+  it('creates the channel row before scheduling first-message processing', async () => {
+    const calls: string[] = [];
+    const db = {
+      hasImportStarted: vi.fn().mockResolvedValue(false),
+      startImport: vi.fn(async () => {
+        calls.push('channel row');
+      }),
+    };
+    const app = createSlackApp({
+      db: db as never,
+      trigger: {
+        startTask: vi.fn(async (name) => {
+          calls.push(name);
+          return 'run-1';
+        }),
+      },
+      signingSecret: 'secret',
+      token: 'token',
+      botUserId: 'B1',
+      botId: 'B1',
+    }).app;
+
+    await app.processEvent({
+      body: {
+        type: 'event_callback',
+        event_id: 'EvFirstMessage',
+        event: {
+          type: 'message',
+          channel: 'C1',
+          channel_type: 'channel',
+          user: 'U1',
+          text: 'I will lead the pilot.',
+          ts: '102',
+        },
+      },
+      ack: vi.fn(),
+      retryNum: undefined,
+    } as never);
+
+    expect(calls).toEqual([
+      'channel row',
+      'importChannel',
+      'processSlackEvent',
+    ]);
+  });
+
   it('turns a Slack event into a proposal, applies an owner correction, and schedules due messages', async () => {
     const trigger = { startTask: vi.fn().mockResolvedValue('run-1') };
     const app = createSlackApp({

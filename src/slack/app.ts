@@ -51,6 +51,7 @@ export function createSlackApp(deps: Dependencies) {
       event.channel_type !== 'im' &&
       !(await deps.db.hasImportStarted(event.channel))
     ) {
+      await deps.db.startImport(event.channel, new Date());
       tasks.push(
         deps.trigger.startTask(
           'importChannel',

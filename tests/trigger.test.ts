@@ -143,7 +143,10 @@ describe('Slack event trigger', () => {
     });
     const trigger = { startTask: vi.fn(() => pending) };
     const { app } = createSlackApp({
-      db: { hasImportStarted: vi.fn().mockResolvedValue(false) } as never,
+      db: {
+        hasImportStarted: vi.fn().mockResolvedValue(false),
+        startImport: vi.fn().mockResolvedValue(undefined),
+      } as never,
       trigger,
       signingSecret: 'secret',
       token: 'token',
