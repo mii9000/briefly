@@ -190,7 +190,7 @@ export function createDb(pool: Pool) {
           delivery.taskId ?? null,
           delivery.recipientId ?? null,
           delivery.text,
-          delivery.blocks ?? null,
+          delivery.blocks ? JSON.stringify(delivery.blocks) : null,
         ],
       );
       return rowCount === 1;
