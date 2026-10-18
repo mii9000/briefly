@@ -46,7 +46,7 @@ describe('task extraction', () => {
           {
             sourceTs: namedMessage.ts,
             title: 'Review the API migration plan',
-            ownerId: 'U2',
+            ownerId: 'U1',
             dueAt: null,
           },
         ],

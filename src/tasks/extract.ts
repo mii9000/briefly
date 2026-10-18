@@ -63,7 +63,17 @@ export async function extractTasks(
         (!proposal.dueAt || !Number.isNaN(Date.parse(proposal.dueAt))),
     )
     .map((proposal) => {
-      if (proposal.ownerId && !allowedOwners.has(proposal.ownerId))
+      const source = context.find(
+        (message) => message.ts === proposal.sourceTs,
+      )!;
+      const namedOwners = members.filter((member) =>
+        member.names.some((name) =>
+          new RegExp(`\\b${escapeRegExp(name)}\\b`, 'i').test(source.text),
+        ),
+      );
+      const ownerId =
+        namedOwners.length === 1 ? namedOwners[0]!.id : proposal.ownerId;
+      if (ownerId && !allowedOwners.has(ownerId))
         throw new Error('Proposal owner is not identified in context');
       const sourceDate = new Date(Number(proposal.sourceTs) * 1000)
         .toISOString()
@@ -101,7 +111,7 @@ export async function extractTasks(
       return {
         sourceTs: proposal.sourceTs,
         title: proposal.title,
-        ownerId: proposal.ownerId,
+        ownerId,
         dueAt:
           dueDate && dueDate >= sourceDate && hasDateEvidence
             ? proposal.dueAt
