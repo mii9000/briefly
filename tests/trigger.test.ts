@@ -105,6 +105,37 @@ describe('Slack event trigger', () => {
     );
   });
 
+  it('ignores Slack system-subtype messages', async () => {
+    const trigger = { startTask: vi.fn() };
+    const { app } = createSlackApp({
+      db: { hasImportStarted: vi.fn().mockResolvedValue(false) } as never,
+      trigger,
+      signingSecret: 'secret',
+      token: 'token',
+      botUserId: 'B1',
+      botId: 'B1',
+    });
+
+    await app.processEvent({
+      body: {
+        type: 'event_callback',
+        event_id: 'EvJoin',
+        event: {
+          type: 'message',
+          subtype: 'channel_join',
+          channel: 'C123',
+          user: 'U123',
+          text: 'U123 joined the channel',
+          ts: '1',
+        },
+      },
+      ack: vi.fn(),
+      retryNum: undefined,
+    } as never);
+
+    expect(trigger.startTask).not.toHaveBeenCalled();
+  });
+
   it('starts the first-channel import and live event in parallel before acknowledgement', async () => {
     let release!: () => void;
     const pending = new Promise<string>((resolve) => {

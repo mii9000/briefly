@@ -42,7 +42,7 @@ export function createSlackApp(deps: Dependencies) {
   });
 
   app.event('message', async ({ event, body }) => {
-    if ('bot_id' in event) return;
+    if ('bot_id' in event || Object.hasOwn(event, 'subtype')) return;
     const eventId = 'event_id' in body ? String(body.event_id) : '';
     if (!eventId) throw new Error('Slack event is missing event_id');
     const tasks = [];
