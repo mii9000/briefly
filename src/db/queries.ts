@@ -108,7 +108,8 @@ export function createDb(pool: Pool) {
          LEFT JOIN source_messages ON source_messages.channel_id = tasks.channel_id
            AND source_messages.ts = tasks.source_ts
          WHERE tasks.channel_id = $1
-           AND (tasks.source_ts = $2 OR source_messages.thread_ts = $2)
+           AND (tasks.source_ts = $2 OR source_messages.thread_ts = $2
+             OR tasks.proposal_message_ts = $2)
          ORDER BY tasks.created_at DESC LIMIT 1`,
         [channelId, sourceTs],
       );
@@ -146,11 +147,13 @@ export function createDb(pool: Pool) {
             ? change.ownerId
             : (task.pendingOwnerId ?? null),
         status:
-          change.type === 'complete'
-            ? 'complete'
-            : change.type === 'reject'
-              ? 'rejected'
-              : task.status,
+          change.type === 'confirm' || change.type === 'progress'
+            ? 'in_progress'
+            : change.type === 'complete'
+              ? 'complete'
+              : change.type === 'reject'
+                ? 'rejected'
+                : task.status,
       };
       const { rows } = await pool.query(
         `UPDATE tasks SET title = $3, due_at = $4,

@@ -27,6 +27,7 @@ describe.skipIf(!pool)('Postgres integration', () => {
     const channelId = `TEST_${crypto.randomUUID().replaceAll('-', '').slice(0, 8)}`;
     const parentTs = '9000000001.000001';
     const replyTs = '9000000002.000002';
+    const proposalTs = '9000000003.000003';
     const taskId = crypto.randomUUID();
 
     try {
@@ -39,12 +40,18 @@ describe.skipIf(!pool)('Postgres integration', () => {
         [channelId, replyTs, parentTs, 'U1'],
       );
       await pool!.query(
-        'INSERT INTO tasks (id, channel_id, source_ts, title, owner_id) VALUES ($1, $2, $3, $4, $5)',
-        [taskId, channelId, replyTs, 'thread task', 'U1'],
+        'INSERT INTO tasks (id, channel_id, source_ts, title, owner_id, proposal_message_ts) VALUES ($1, $2, $3, $4, $5, $6)',
+        [taskId, channelId, replyTs, 'thread task', 'U1', proposalTs],
       );
 
       expect(await db.hasImportStarted(channelId)).toBe(true);
       expect((await db.getTaskForSource(channelId, parentTs))?.id).toBe(taskId);
+      expect((await db.getTaskForSource(channelId, proposalTs))?.id).toBe(
+        taskId,
+      );
+      await expect(
+        db.updateTask(taskId, 'U1', { type: 'confirm' }),
+      ).resolves.toMatchObject({ status: 'in_progress' });
       await db.claimDelivery({
         key: `dm:${taskId}`,
         channelId,

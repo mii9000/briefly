@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { updateProposalMessage } from '../src/slack/proposals.js';
+import { proposalMessage, reassignmentMessage } from '../src/slack/views.js';
 import type { Task } from '../src/types.js';
 
 const task: Task = {
@@ -16,6 +17,38 @@ const task: Task = {
 };
 
 describe('proposal messages', () => {
+  it('keeps task IDs out of visible proposal and reassignment text', () => {
+    const messages = [
+      proposalMessage(task, 'https://slack.test/source'),
+      reassignmentMessage(task, 'U2'),
+    ];
+    const blocks = messages.map(
+      (message) =>
+        message.blocks as Array<{
+          type: string;
+          text?: { text: string };
+          elements?: Array<{ value: string; text: { text: string } }>;
+        }>,
+    );
+    const visibleText = messages.flatMap((message, index) => [
+      message.text,
+      ...blocks[index]!.flatMap((block) =>
+        block.type === 'section'
+          ? [block.text?.text ?? '']
+          : (block.elements ?? []).map((element) => element.text.text),
+      ),
+    ]);
+
+    expect(visibleText.join(' ')).not.toContain(task.id);
+    expect(
+      blocks.flatMap((messageBlocks) =>
+        messageBlocks.flatMap((block) =>
+          (block.elements ?? []).map((element) => element.value),
+        ),
+      ),
+    ).toEqual([task.id, task.id, task.id, task.id, task.id, task.id]);
+  });
+
   it('finds an existing proposal card and refreshes its task details', async () => {
     const slack = {
       conversations: {
