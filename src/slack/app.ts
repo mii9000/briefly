@@ -75,24 +75,28 @@ export function createSlackApp(deps: Dependencies) {
 
   app.command('/briefly', async ({ command, ack, respond }) => {
     await ack();
-    const [subcommand, pageText] = command.text.trim().split(/\s+/);
-    if (subcommand !== 'list') {
+    void (async () => {
+      const [subcommand, pageText] = command.text.trim().split(/\s+/);
+      if (subcommand !== 'list') {
+        await respond({
+          text: 'Use `/briefly list` to view this channel’s tasks.',
+        });
+        return;
+      }
+      const pageNumber = Number(pageText ?? 1);
+      const page = await renderTaskList(
+        command.channel_id,
+        Number.isInteger(pageNumber) ? pageNumber : 1,
+        deps.db,
+      );
       await respond({
-        text: 'Use `/briefly list` to view this channel’s tasks.',
+        text:
+          page.text +
+          (page.nextPage ? `\nNext: /briefly list ${page.nextPage}` : ''),
       });
-      return;
-    }
-    const pageNumber = Number(pageText ?? 1);
-    const page = await renderTaskList(
-      command.channel_id,
-      Number.isInteger(pageNumber) ? pageNumber : 1,
-      deps.db,
+    })().catch((error) =>
+      console.error('Failed to respond to /briefly', error),
     );
-    await respond({
-      text:
-        page.text +
-        (page.nextPage ? `\nNext: /briefly list ${page.nextPage}` : ''),
-    });
   });
 
   app.action(/task_/, async ({ action, body, ack, client }) => {

@@ -3,6 +3,50 @@ import { verifySlackRequest } from '@slack/bolt';
 import { createSlackApp } from '../src/slack/app.js';
 
 describe('Slack event trigger', () => {
+  it('acknowledges /briefly before the task query finishes', async () => {
+    let releaseTasks!: (tasks: never[]) => void;
+    const pendingTasks = new Promise<never[]>((resolve) => {
+      releaseTasks = resolve;
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response());
+    vi.stubGlobal('fetch', fetchMock);
+    const ack = vi.fn().mockResolvedValue(undefined);
+    const { app } = createSlackApp({
+      db: { listTasks: vi.fn(() => pendingTasks) } as never,
+      trigger: { startTask: vi.fn() },
+      signingSecret: 'secret',
+      token: 'token',
+      botUserId: 'U1',
+      botId: 'B1',
+    });
+
+    const processing = app.processEvent({
+      body: {
+        command: '/briefly',
+        text: 'list',
+        channel_id: 'C123',
+        response_url: 'https://example.com/response',
+      },
+      ack,
+      retryNum: undefined,
+    } as never);
+    const returned = await Promise.race([
+      processing.then(() => true),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 25)),
+    ]);
+    releaseTasks([]);
+    await processing;
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    vi.unstubAllGlobals();
+
+    expect(ack).toHaveBeenCalledOnce();
+    expect(returned).toBe(true);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toContain(
+      'No tasks in this channel yet.',
+    );
+  });
+
   it('uses Slack event ID to trigger the same Workflow run on redelivery', async () => {
     const trigger = { startTask: vi.fn().mockResolvedValue('run-1') };
     const slack = { postMessage: vi.fn() };
