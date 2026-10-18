@@ -22,6 +22,7 @@ export type Task = {
   sourceTs: string;
   title: string;
   ownerId: string | null;
+  proposalMessageTs?: string | null;
   pendingOwnerId?: string | null;
   dueAt: string | null;
   status: TaskStatus;

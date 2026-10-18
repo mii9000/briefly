@@ -114,6 +114,12 @@ export function createDb(pool: Pool) {
       );
       return rows[0] ? rowToTask(rows[0]) : null;
     },
+    async markProposalMessage(taskId: string, messageTs: string) {
+      await pool.query(
+        'UPDATE tasks SET proposal_message_ts = $2 WHERE id = $1',
+        [taskId, messageTs],
+      );
+    },
     async updateTask(taskId: string, actorId: string, change: TaskChange) {
       const task = await this.getTask(taskId);
       if (!task || (task.ownerId && task.ownerId !== actorId)) return null;
@@ -274,6 +280,9 @@ function rowToTask(row: Record<string, unknown>): Task {
     sourceTs: String(row.source_ts),
     title: String(row.title),
     ownerId: row.owner_id ? String(row.owner_id) : null,
+    proposalMessageTs: row.proposal_message_ts
+      ? String(row.proposal_message_ts)
+      : null,
     pendingOwnerId: row.pending_owner_id ? String(row.pending_owner_id) : null,
     dueAt: row.due_at ? new Date(String(row.due_at)).toISOString() : null,
     status: row.status as Task['status'],

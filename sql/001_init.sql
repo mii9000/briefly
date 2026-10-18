@@ -38,6 +38,7 @@ CREATE INDEX IF NOT EXISTS tasks_due_idx ON tasks (status, last_updated_at);
 CREATE INDEX IF NOT EXISTS tasks_channel_idx ON tasks (channel_id, created_at DESC);
 
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS pending_owner_id text;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS proposal_message_ts text;
 
 CREATE TABLE IF NOT EXISTS deliveries (
   delivery_key text PRIMARY KEY,

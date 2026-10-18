@@ -10,6 +10,7 @@ import {
   type HistoryClient,
 } from './slack/history.js';
 import { proposalMessage, reassignmentMessage } from './slack/views.js';
+import { updateProposalMessage } from './slack/proposals.js';
 import { isChannelMember } from './slack/members.js';
 import { applyTaskUpdate, parseTaskReply } from './tasks/updates.js';
 import {
@@ -108,6 +109,8 @@ async function updateLinkedTask(
   const change = await parseTaskReply(event.text ?? '', task, deps.model);
   if (change) {
     const updated = await applyTaskUpdate(task.id, event.user, change, deps.db);
+    if (change.type !== 'confirm' && change.type !== 'progress')
+      await updateProposalMessage(updated, deps.slack, deps.db);
     if (change.type === 'reassign' && updated.pendingOwnerId && event.ts) {
       const message = reassignmentMessage(updated, event.user);
       await deps.db.claimDelivery({

@@ -2,10 +2,50 @@ import { describe, expect, it, vi } from 'vitest';
 import { createDb } from '../src/db/queries.js';
 
 describe('database deliveries', () => {
+  it('loads the Slack timestamp for a task proposal', async () => {
+    const query = vi.fn().mockResolvedValue({
+      rows: [
+        {
+          id: 'task-1',
+          channel_id: 'C1',
+          source_ts: '101',
+          title: 'Task',
+          owner_id: null,
+          proposal_message_ts: '203',
+          pending_owner_id: null,
+          due_at: null,
+          status: 'open',
+          last_updated_at: '2026-10-18T14:41:00.000Z',
+          last_dm_at: null,
+          escalated_at: null,
+        },
+      ],
+    });
+    const db = createDb({ query } as never);
+
+    await expect(db.getTask('task-1')).resolves.toMatchObject({
+      proposalMessageTs: '203',
+    });
+  });
+
+  it('stores the Slack timestamp for a task proposal', async () => {
+    const query = vi.fn().mockResolvedValue({ rowCount: 1 });
+    const db = createDb({ query } as never);
+
+    await db.markProposalMessage('task-1', '203');
+
+    expect(query).toHaveBeenCalledWith(
+      'UPDATE tasks SET proposal_message_ts = $2 WHERE id = $1',
+      ['task-1', '203'],
+    );
+  });
+
   it('serializes Slack blocks as JSON for the jsonb column', async () => {
     const query = vi.fn().mockResolvedValue({ rowCount: 1 });
     const db = createDb({ query } as never);
-    const blocks = [{ type: 'section', text: { type: 'mrkdwn', text: 'A, B' } }];
+    const blocks = [
+      { type: 'section', text: { type: 'mrkdwn', text: 'A, B' } },
+    ];
 
     await db.claimDelivery({
       key: 'proposal:task-1',

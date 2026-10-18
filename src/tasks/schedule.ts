@@ -80,10 +80,10 @@ export async function deliver(
         channel: string;
         text: string;
         blocks?: unknown[];
-      }): Promise<unknown>;
+      }): Promise<{ ts?: string }>;
     };
   },
-  db: Pick<Db, 'markDelivery' | 'markDelivered'>,
+  db: Pick<Db, 'markDelivery' | 'markDelivered' | 'markProposalMessage'>,
   now = new Date(),
 ): Promise<void> {
   try {
@@ -92,11 +92,13 @@ export async function deliver(
           ?.id
       : item.channelId;
     if (!channel) throw new Error('Slack did not return a DM channel');
-    await slack.chat.postMessage({
+    const response = await slack.chat.postMessage({
       channel,
       text: item.text,
       blocks: item.blocks,
     });
+    if (item.key.startsWith('proposal:') && item.taskId && response.ts)
+      await db.markProposalMessage(item.taskId, response.ts);
     await db.markDelivered(
       item.key,
       item.taskId,

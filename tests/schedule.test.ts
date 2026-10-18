@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { collectDueWork } from '../src/tasks/schedule.js';
+import { collectDueWork, deliver } from '../src/tasks/schedule.js';
 import type { Delivery, Task } from '../src/types.js';
 
 const task: Task = {
@@ -31,6 +31,32 @@ function fakeDb(tasks: Task[] = [task]) {
 }
 
 describe('scheduled follow-ups', () => {
+  it('stores the Slack timestamp for a posted proposal card', async () => {
+    const slack = {
+      conversations: { open: vi.fn() },
+      chat: { postMessage: vi.fn().mockResolvedValue({ ts: '203' }) },
+    };
+    const db = {
+      markDelivery: vi.fn(),
+      markDelivered: vi.fn(),
+      markProposalMessage: vi.fn(),
+    };
+
+    await deliver(
+      {
+        key: `proposal:${task.id}`,
+        channelId: task.channelId,
+        taskId: task.id,
+        text: 'Proposal',
+      },
+      slack as never,
+      db as never,
+    );
+
+    expect(db.markProposalMessage).toHaveBeenCalledWith(task.id, '203');
+    expect(db.markDelivered).toHaveBeenCalled();
+  });
+
   it('DMs after 48 hours, escalates after 72, and repeats the DM after another 48', async () => {
     const db = fakeDb();
 
