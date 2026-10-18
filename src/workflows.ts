@@ -11,7 +11,7 @@ import {
 } from './slack/history.js';
 import { proposalMessage, reassignmentMessage } from './slack/views.js';
 import { updateProposalMessage } from './slack/proposals.js';
-import { isChannelMember } from './slack/members.js';
+import { isChannelMember, loadMemberDirectory } from './slack/members.js';
 import { applyTaskUpdate, parseTaskReply } from './tasks/updates.js';
 import {
   createOpenRouterModel,
@@ -43,11 +43,15 @@ function runtime() {
   const config = loadConfig();
   const db = createDb(getPool());
   const slack = new WebClient(config.SLACK_BOT_TOKEN);
+  let memberDirectory: ReturnType<typeof loadMemberDirectory> | undefined;
   return {
     config,
     db,
     slack,
     model: createOpenRouterModel(config.OPENROUTER_API_KEY),
+    loadMembers() {
+      return (memberDirectory ??= loadMemberDirectory(slack));
+    },
   };
 }
 
@@ -57,7 +61,8 @@ async function processSource(
   deps: ReturnType<typeof runtime>,
 ) {
   const existing = await deps.db.listTasks(source.channelId, 100, 0);
-  const proposals = await extractTasks(context, existing, deps.model);
+  const members = await deps.loadMembers();
+  const proposals = await extractTasks(context, existing, deps.model, members);
   const tasks = await persistProposals(source.channelId, proposals, deps.db);
   for (const task of tasks) {
     const { permalink } = await deps.slack.chat.getPermalink({

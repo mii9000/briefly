@@ -35,6 +35,35 @@ describe('task extraction', () => {
     ]);
   });
 
+  it('maps a plain member name to its Slack ID', async () => {
+    const namedMessage = {
+      ...message,
+      text: 'Domas will review the API migration plan.',
+    };
+    const model = {
+      complete: vi.fn().mockResolvedValue({
+        proposals: [
+          {
+            sourceTs: namedMessage.ts,
+            title: 'Review the API migration plan',
+            ownerId: 'U2',
+            dueAt: null,
+          },
+        ],
+      }),
+    };
+
+    await expect(
+      extractTasks([namedMessage], [], model, [
+        { id: 'U1', names: ['Ibrahim'] },
+        { id: 'U2', names: ['Domas', 'Domas Cole'] },
+      ]),
+    ).resolves.toMatchObject([{ ownerId: 'U2' }]);
+    expect(JSON.parse(model.complete.mock.calls[0]?.[0] ?? '')).toMatchObject({
+      members: [{ id: 'U2', names: ['Domas', 'Domas Cole'] }],
+    });
+  });
+
   it('drops a due date the source message does not state', async () => {
     const undatedMessage = {
       ...message,

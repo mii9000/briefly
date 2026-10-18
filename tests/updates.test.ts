@@ -22,6 +22,15 @@ const task: Task = {
 };
 
 describe('task updates', () => {
+  it('omits task IDs from the visible task list', async () => {
+    const result = await renderTaskList('C1', 1, {
+      listTasks: vi.fn(async () => [task]),
+    });
+
+    expect(result.text).toBe('• Send report — <@U1> — date unknown — open');
+    expect(result.text).not.toContain(task.id);
+  });
+
   it('applies the owner change and rejects changes from another member', async () => {
     const db = {
       getTask: vi.fn(async () => task),
