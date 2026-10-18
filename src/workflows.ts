@@ -9,8 +9,11 @@ import {
   loadMessageContext,
   type HistoryClient,
 } from './slack/history.js';
-import { proposalMessage, reassignmentMessage } from './slack/views.js';
-import { updateProposalMessage } from './slack/proposals.js';
+import { reassignmentMessage } from './slack/views.js';
+import {
+  proposalDeliveries,
+  updateProposalMessage,
+} from './slack/proposals.js';
 import { loadMemberDirectory } from './slack/members.js';
 import { applyTaskUpdate, parseTaskReply } from './tasks/updates.js';
 import {
@@ -69,14 +72,8 @@ async function processSource(
       channel: task.channelId,
       message_ts: task.sourceTs,
     });
-    const message = proposalMessage(task, permalink ?? '');
-    await deps.db.claimDelivery({
-      key: `proposal:${task.id}`,
-      channelId: task.channelId,
-      taskId: task.id,
-      text: message.text,
-      blocks: message.blocks,
-    });
+    for (const delivery of proposalDeliveries(task, permalink ?? ''))
+      await deps.db.claimDelivery(delivery);
   }
   await deps.db.markSourceProcessed(source.channelId, source.ts);
   await sendPending(deps);
@@ -208,5 +205,12 @@ export const runDueWorkTask = task(
       deps.db,
     );
     await sendPending(deps);
+  },
+);
+
+export const sendPendingTask = task(
+  { name: 'sendPending', retry: { maxRetries: 3, waitDurationMs: 1000 } },
+  async () => {
+    await sendPending(runtime());
   },
 );

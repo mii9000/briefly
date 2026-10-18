@@ -1,6 +1,34 @@
 import type { WebClient } from '@slack/web-api';
-import { proposalMessage } from './views.js';
-import type { Task } from '../types.js';
+import { ownerActionsMessage, proposalMessage } from './views.js';
+import type { Delivery, Task } from '../types.js';
+
+export function ownerActionsDelivery(task: Task, sourceLink: string): Delivery {
+  const message = ownerActionsMessage(task, sourceLink);
+  return {
+    key: `owner-actions:${task.id}:${task.ownerId}`,
+    channelId: task.channelId,
+    taskId: task.id,
+    recipientId: task.ownerId!,
+    text: message.text,
+    blocks: message.blocks,
+  };
+}
+
+export function proposalDeliveries(task: Task, sourceLink: string): Delivery[] {
+  const message = proposalMessage(task, sourceLink);
+  return [
+    {
+      key: `proposal:${task.id}`,
+      channelId: task.channelId,
+      taskId: task.id,
+      text: message.text,
+      blocks: message.blocks,
+    },
+    ...(task.ownerId && !['complete', 'rejected'].includes(task.status)
+      ? [ownerActionsDelivery(task, sourceLink)]
+      : []),
+  ];
+}
 
 export async function updateProposalMessage(
   task: Task,

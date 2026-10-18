@@ -1,12 +1,14 @@
 import { App, ExpressReceiver } from '@slack/bolt';
+import type { WebClient } from '@slack/web-api';
 import type { Db } from '../db/queries.js';
 import type { TaskTrigger } from '../render/trigger.js';
+import type { Task } from '../types.js';
 import {
   applyReassignmentDecision,
   applyTaskUpdate,
   renderTaskList,
 } from '../tasks/updates.js';
-import { updateProposalMessage } from './proposals.js';
+import { ownerActionsDelivery, updateProposalMessage } from './proposals.js';
 
 type Dependencies = {
   db: Db;
@@ -41,6 +43,28 @@ export function createSlackApp(deps: Dependencies) {
   app.error(async (error) => {
     throw error;
   });
+
+  async function queueOwnerActions(task: Task, client: WebClient) {
+    const { permalink } = await client.chat.getPermalink({
+      channel: task.channelId,
+      message_ts: task.sourceTs,
+    });
+    const delivery = ownerActionsDelivery(task, permalink ?? '');
+    if (await deps.db.claimDelivery(delivery)) {
+      try {
+        await deps.trigger.startTask(
+          'sendPending',
+          [],
+          `send-pending:${delivery.key}`,
+        );
+      } catch (error) {
+        console.error(
+          'Owner action DM is queued for the next delivery run',
+          error,
+        );
+      }
+    }
+  }
 
   app.event('message', async ({ event, body }) => {
     if ('bot_id' in event || Object.hasOwn(event, 'subtype')) return;
@@ -124,6 +148,8 @@ export function createSlackApp(deps: Dependencies) {
           deps.db,
         );
         await updateProposalMessage(updated, client, deps.db);
+        if (action.action_id === 'task_reassign_accept')
+          await queueOwnerActions(updated, client);
         await client.chat.postEphemeral({
           channel: channelId,
           user: body.user.id,
@@ -178,6 +204,7 @@ export function createSlackApp(deps: Dependencies) {
           deps.db,
         );
         await updateProposalMessage(updated, client, deps.db);
+        await queueOwnerActions(updated, client);
         await client.chat.postEphemeral({
           channel: channelId,
           user: body.user.id,
@@ -204,8 +231,8 @@ export function createSlackApp(deps: Dependencies) {
         user: body.user.id,
         text:
           action.action_id === 'task_edit'
-            ? 'Reply in this task’s thread with the corrected title and/or due date.'
-            : 'Reply in this task’s thread and @mention the person who should own it. They must accept.',
+            ? 'Reply in this DM thread with the corrected title and/or due date.'
+            : 'Reply in this DM thread and @mention the person who should own it. They must accept.',
       });
       return;
     }

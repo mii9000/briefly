@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { updateProposalMessage } from '../src/slack/proposals.js';
+import {
+  ownerActionsDelivery,
+  proposalDeliveries,
+  updateProposalMessage,
+} from '../src/slack/proposals.js';
 import { proposalMessage, reassignmentMessage } from '../src/slack/views.js';
 import type { Task } from '../src/types.js';
 
@@ -17,7 +21,7 @@ const task: Task = {
 };
 
 describe('proposal messages', () => {
-  it('offers only owner actions for assigned tasks and a claim for unassigned tasks', () => {
+  it('keeps assigned-task actions private and leaves Claim public for unassigned tasks', () => {
     const actionIds = (message: ReturnType<typeof proposalMessage>) =>
       (
         message.blocks.find((block) => block.type === 'actions')?.elements as
@@ -26,7 +30,7 @@ describe('proposal messages', () => {
 
     expect(
       actionIds(proposalMessage({ ...task, ownerId: 'U1' }, 'source')),
-    ).toEqual(['task_edit', 'task_reassign', 'task_reject']);
+    ).toEqual([]);
     expect(actionIds(proposalMessage(task, 'source'))).toEqual(['task_claim']);
     expect(
       actionIds(
@@ -36,6 +40,36 @@ describe('proposal messages', () => {
         ),
       ),
     ).toEqual([]);
+  });
+
+  it('delivers assigned-task controls privately to the owner', () => {
+    const [proposal, ownerActions] = proposalDeliveries(
+      { ...task, ownerId: 'U1' },
+      'https://slack.test/source',
+    );
+    const actions = (
+      ownerActions!.blocks as Array<{
+        type: string;
+        elements?: Array<{ action_id: string }>;
+      }>
+    ).find((block) => block.type === 'actions');
+
+    expect(proposal!.recipientId).toBeUndefined();
+    expect(ownerActions!.key).toBe(`owner-actions:${task.id}:U1`);
+    expect(ownerActions!.recipientId).toBe('U1');
+    expect(ownerActions!.text).toContain('Deploy test service');
+    expect(JSON.stringify(ownerActions!.blocks)).toContain(
+      '<https://slack.test/source|source thread>',
+    );
+    expect(actions?.elements?.map(({ action_id }) => action_id)).toEqual([
+      'task_edit',
+      'task_reassign',
+      'task_reject',
+    ]);
+    expect(proposalDeliveries(task, 'source')).toHaveLength(1);
+    expect(
+      ownerActionsDelivery({ ...task, ownerId: 'U2' }, 'source').recipientId,
+    ).toBe('U2');
   });
 
   it('omits the actions block when a task is rejected', () => {
