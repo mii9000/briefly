@@ -69,6 +69,36 @@ describe('task extraction', () => {
     await expect(extractTasks([message], [], model)).resolves.toEqual([]);
   });
 
+  it('discards past due dates and gives the model the source message date', async () => {
+    const recentMessage = { ...message, ts: '1792333442.000000' };
+    const model = {
+      complete: vi.fn().mockResolvedValue({
+        proposals: [
+          {
+            sourceTs: recentMessage.ts,
+            title: 'Complete the hackathon',
+            ownerId: null,
+            dueAt: '2024-04-18T00:00:00.000Z',
+          },
+        ],
+      }),
+    };
+
+    await expect(extractTasks([recentMessage], [], model)).resolves.toEqual([
+      {
+        sourceTs: recentMessage.ts,
+        title: 'Complete the hackathon',
+        ownerId: null,
+        dueAt: null,
+      },
+    ]);
+    expect(JSON.parse(model.complete.mock.calls[0]?.[0] ?? '')).toMatchObject({
+      context: [
+        { ts: recentMessage.ts, timestampUtc: '2026-10-18T14:24:02.000Z' },
+      ],
+    });
+  });
+
   it('persists one task when the same source is retried', async () => {
     const records = new Set<string>();
     const db = {

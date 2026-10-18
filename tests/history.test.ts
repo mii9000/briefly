@@ -99,6 +99,12 @@ describe('channel history', () => {
           messages: [
             { ts: '2678500', text: 'Briefly proposal', bot_id: 'B1' },
             {
+              ts: '2678500.5',
+              text: 'Ibrahim joined the channel',
+              subtype: 'channel_join',
+              user: 'U3',
+            },
+            {
               ts: '2678501',
               text: 'Human discussion',
               user: 'U1',
@@ -138,7 +144,7 @@ describe('channel history', () => {
       },
       process: vi.fn(
         async (message: SourceMessage, _context: SourceMessage[]) => {
-        processed.push(message);
+          processed.push(message);
         },
       ),
       now: new Date(31 * 24 * 60 * 60 * 1000),

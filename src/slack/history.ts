@@ -7,6 +7,7 @@ type SlackMessage = {
   text?: string;
   reply_count?: number;
   bot_id?: string;
+  subtype?: string;
 };
 
 type HistoryResponse = {
@@ -90,7 +91,7 @@ export async function importChannel(
           : oldestTs;
       const context = parent.reply_count
         ? await loadThread(channelId, parent, deps.slack)
-        : parent.bot_id
+        : parent.bot_id || parent.subtype
           ? []
           : [toSource(channelId, parent)];
       for (const source of context) {
@@ -143,7 +144,7 @@ async function loadThread(
     );
     messages.push(
       ...(page.messages ?? [])
-        .filter((message) => !message.bot_id)
+        .filter((message) => !message.bot_id && !message.subtype)
         .map((message) => toSource(channelId, message)),
     );
     cursor = page.response_metadata?.next_cursor || undefined;
