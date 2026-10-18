@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: briefly
+      POSTGRES_PASSWORD: briefly
+      POSTGRES_DB: briefly
+    ports:
+      - '5432:5432'
+    volumes:
+      - briefly-data:/var/lib/postgresql/data
+
+volumes:
+  briefly-data:

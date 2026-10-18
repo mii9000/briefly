@@ -1,0 +1,38 @@
+display_information:
+  name: Briefly
+  description: Keeps Slack commitments visible and follows up on stale work.
+  background_color: '#3657D5'
+features:
+  bot_user:
+    display_name: Briefly
+    always_online: false
+  slash_commands:
+    - command: /briefly
+      description: View this channel's task list.
+      usage_hint: list [page]
+      should_escape: false
+oauth_config:
+  scopes:
+    bot:
+      - channels:history
+      - groups:history
+      - im:history
+      - channels:read
+      - groups:read
+      - chat:write
+      - commands
+      - users:read
+settings:
+  event_subscriptions:
+    request_url: https://REPLACE_WITH_RENDER_HOST/slack/events
+    bot_events:
+      - message.channels
+      - message.groups
+      - message.im
+      - member_joined_channel
+  interactivity:
+    is_enabled: true
+    request_url: https://REPLACE_WITH_RENDER_HOST/slack/events
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false

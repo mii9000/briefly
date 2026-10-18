@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+coverage/
+.archify/
+.superpowers/
+brain-dump.md
+.claude/settings.local.json

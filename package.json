@@ -1,0 +1,40 @@
+{
+  "name": "briefly",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:web": "RENDER_USE_LOCAL_DEV=true tsx watch src/web.ts",
+    "dev:workflows": "RENDER_USE_LOCAL_DEV=true render workflows dev -- tsx src/workflows.ts",
+    "migrate": "tsx src/db/migrate.ts",
+    "test": "vitest run tests",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "build": "tsc -p tsconfig.build.json",
+    "start:web": "node dist/src/db/migrate.js && node dist/src/web.js",
+    "start:workflows": "node dist/src/workflows.js",
+    "run:cron": "node dist/src/cron.js",
+    "test:integration": "vitest run tests/db.integration.test.ts"
+  },
+  "dependencies": {
+    "@renderinc/sdk": "^1.0.0",
+    "@slack/bolt": "^5.0.0",
+    "@slack/web-api": "^8.2.0",
+    "dotenv": "^16.6.1",
+    "luxon": "^3.7.2",
+    "pg": "^8.23.1",
+    "undici": "^8.12.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/luxon": "^3.7.1",
+    "@types/node": "^22.15.30",
+    "@types/pg": "^8.15.5",
+    "prettier": "^3.9.10",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  }
+}
