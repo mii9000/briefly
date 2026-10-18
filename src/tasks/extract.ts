@@ -130,6 +130,8 @@ export function createOpenRouterModel(apiKey: string): ModelClient {
             required: ['proposals'],
             additionalProperties: false,
           };
+      console.info(`OpenRouter ${mode}: request started`);
+      const requestStarted = Date.now();
       const response = await fetch(
         'https://openrouter.ai/api/v1/chat/completions',
         {
@@ -160,6 +162,9 @@ export function createOpenRouterModel(apiKey: string): ModelClient {
             ],
           }),
         },
+      );
+      console.info(
+        `OpenRouter ${mode}: response ${response.status} in ${Date.now() - requestStarted}ms`,
       );
       if (!response.ok)
         throw new Error(`OpenRouter returned ${response.status}`);

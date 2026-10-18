@@ -72,6 +72,29 @@ describe('task updates', () => {
     ).resolves.toMatchObject({ ownerId: 'U2' });
   });
 
+  it('recognizes an explicit @mention reassignment without calling the model', async () => {
+    const model = { complete: vi.fn() };
+
+    await expect(
+      parseTaskReply(
+        'Please reassign this task to <@U2> to take ownership.',
+        task,
+        model,
+      ),
+    ).resolves.toEqual({ type: 'reassign', ownerId: 'U2' });
+    expect(model.complete).not.toHaveBeenCalled();
+  });
+
+  it('treats a single different user mention as the suggested owner', async () => {
+    const model = { complete: vi.fn() };
+
+    await expect(parseTaskReply('<@U2>', task, model)).resolves.toEqual({
+      type: 'reassign',
+      ownerId: 'U2',
+    });
+    expect(model.complete).not.toHaveBeenCalled();
+  });
+
   it('classifies progress text as an update and acknowledgment text as no update', async () => {
     const model = {
       complete: vi
@@ -126,19 +149,13 @@ describe('task updates', () => {
     }
   });
 
-  it('only proposes reassignment to a Slack user mentioned in the owner reply', async () => {
+  it('rejects a model-suggested owner who is not mentioned in the reply', async () => {
     const model = {
-      complete: vi
-        .fn()
-        .mockResolvedValueOnce({ type: 'reassign', ownerId: 'U2' })
-        .mockResolvedValueOnce({ type: 'reassign', ownerId: 'U3' }),
+      complete: vi.fn().mockResolvedValue({ type: 'reassign', ownerId: 'U2' }),
     };
 
     await expect(
-      parseTaskReply('Could <@U2> take this?', task, model),
-    ).resolves.toEqual({ type: 'reassign', ownerId: 'U2' });
-    await expect(
-      parseTaskReply('Could <@U2> take this?', task, model),
+      parseTaskReply('Could someone take this?', task, model),
     ).resolves.toBeNull();
   });
 

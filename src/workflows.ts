@@ -100,7 +100,11 @@ async function updateLinkedTask(
       .match(/task ([0-9a-f-]{36})/i)?.[1];
     if (!task && id) task = await deps.db.getTask(id);
   } else if (event.thread_ts) {
+    console.info('processSlackEvent: looking up task for thread');
     task = await deps.db.getTaskForSource(event.channel, event.thread_ts);
+    console.info(
+      `processSlackEvent: thread task ${task ? 'found' : 'not found'}`,
+    );
   }
   if (!task) return false;
   if (
@@ -109,8 +113,14 @@ async function updateLinkedTask(
     !(await isChannelMember(task.channelId, event.user, deps.slack))
   )
     return true;
+  console.info('processSlackEvent: parsing task reply');
+  const replyStarted = Date.now();
   const change = await parseTaskReply(event.text ?? '', task, deps.model);
+  console.info(
+    `processSlackEvent: parsed task reply in ${Date.now() - replyStarted}ms`,
+  );
   if (change) {
+    console.info('processSlackEvent: applying task update');
     const updated = await applyTaskUpdate(task.id, event.user, change, deps.db);
     if (change.type !== 'confirm' && change.type !== 'progress')
       await updateProposalMessage(updated, deps.slack, deps.db);
@@ -155,6 +165,8 @@ export const processSlackEventTask = task(
     )
       return;
     const deps = runtime();
+    console.info('processSlackEvent: loading Slack message context');
+    const contextStarted = Date.now();
     const context = await loadMessageContext(
       event as {
         channel: string;
@@ -167,8 +179,13 @@ export const processSlackEventTask = task(
         slack: deps.slack as unknown as HistoryClient,
       },
     );
+    console.info(
+      `processSlackEvent: loaded Slack message context in ${Date.now() - contextStarted}ms`,
+    );
     if (await updateLinkedTask(event, context, deps)) {
+      console.info('processSlackEvent: sending pending deliveries');
       await sendPending(deps);
+      console.info('processSlackEvent: pending deliveries sent');
       return;
     }
     if (event.channel_type === 'im') return;

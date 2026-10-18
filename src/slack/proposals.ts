@@ -34,10 +34,15 @@ export async function updateProposalMessage(
     message_ts: task.sourceTs,
   });
   const message = proposalMessage(task, permalink ?? '');
+  console.info('processSlackEvent: updating Slack task proposal');
+  const updateStarted = Date.now();
   await slack.chat.update({
     channel: task.channelId,
     ts: messageTs,
     text: message.text,
     blocks: message.blocks as never,
   });
+  console.info(
+    `processSlackEvent: updated Slack task proposal in ${Date.now() - updateStarted}ms`,
+  );
 }

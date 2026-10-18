@@ -49,6 +49,12 @@ export async function parseTaskReply(
   task: Task,
   model: ModelClient,
 ): Promise<TaskChange | null> {
+  const mentions = [...text.matchAll(/<@([A-Z0-9]+)>/g)].map(
+    (match) => match[1],
+  );
+  if (mentions.length === 1 && mentions[0] !== task.ownerId)
+    return { type: 'reassign', ownerId: mentions[0]! };
+
   const result = replySchema.parse(
     await model.complete(JSON.stringify({ task, reply: text }), 'reply'),
   );
