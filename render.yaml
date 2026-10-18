@@ -1,78 +1,82 @@
-services:
-  - type: web
-    name: briefly-web
-    runtime: node
-    region: frankfurt
-    plan: free
-    buildCommand: npm ci && npm run build
-    startCommand: npm run start:web
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: briefly-db
-          property: connectionString
-      - key: RENDER_API_KEY
-        sync: false
-      - key: RENDER_WORKFLOW_SLUG
-        value: briefly
-      - key: SLACK_BOT_TOKEN
-        sync: false
-      - key: SLACK_SIGNING_SECRET
-        sync: false
-      - key: SLACK_BOT_USER_ID
-        sync: false
-      - key: SLACK_BOT_ID
-        sync: false
-      - key: OPENROUTER_API_KEY
-        sync: false
-      - key: BRIEFLY_TIME_ZONE
-        value: Europe/Amsterdam
+projects:
+  - name: Briefly
+    environments:
+      - name: Production
+        services:
+          - type: web
+            name: briefly-web
+            runtime: node
+            region: frankfurt
+            plan: free
+            buildCommand: npm ci && npm run build
+            startCommand: npm run start:web
+            envVars:
+              - key: DATABASE_URL
+                fromDatabase:
+                  name: briefly-db
+                  property: connectionString
+              - key: RENDER_API_KEY
+                sync: false
+              - key: RENDER_WORKFLOW_SLUG
+                value: briefly
+              - key: SLACK_BOT_TOKEN
+                sync: false
+              - key: SLACK_SIGNING_SECRET
+                sync: false
+              - key: SLACK_BOT_USER_ID
+                sync: false
+              - key: SLACK_BOT_ID
+                sync: false
+              - key: OPENROUTER_API_KEY
+                sync: false
+              - key: BRIEFLY_TIME_ZONE
+                value: Europe/Amsterdam
 
-  - type: workflow
-    name: briefly
-    runtime: node
-    region: frankfurt
-    buildCommand: npm ci && npm run build
-    startCommand: npm run start:workflows
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: briefly-db
-          property: connectionString
-      - key: RENDER_API_KEY
-        sync: false
-      - key: RENDER_WORKFLOW_SLUG
-        value: briefly
-      - key: SLACK_BOT_TOKEN
-        sync: false
-      - key: SLACK_SIGNING_SECRET
-        sync: false
-      - key: SLACK_BOT_USER_ID
-        sync: false
-      - key: SLACK_BOT_ID
-        sync: false
-      - key: OPENROUTER_API_KEY
-        sync: false
-      - key: BRIEFLY_TIME_ZONE
-        value: Europe/Amsterdam
+          - type: workflow
+            name: briefly
+            runtime: node
+            region: frankfurt
+            buildCommand: npm ci && npm run build
+            startCommand: npm run start:workflows
+            envVars:
+              - key: DATABASE_URL
+                fromDatabase:
+                  name: briefly-db
+                  property: connectionString
+              - key: RENDER_API_KEY
+                sync: false
+              - key: RENDER_WORKFLOW_SLUG
+                value: briefly
+              - key: SLACK_BOT_TOKEN
+                sync: false
+              - key: SLACK_SIGNING_SECRET
+                sync: false
+              - key: SLACK_BOT_USER_ID
+                sync: false
+              - key: SLACK_BOT_ID
+                sync: false
+              - key: OPENROUTER_API_KEY
+                sync: false
+              - key: BRIEFLY_TIME_ZONE
+                value: Europe/Amsterdam
 
-  - type: cron
-    name: briefly-hourly
-    runtime: node
-    region: frankfurt
-    plan: 0.5c-512mb
-    schedule: '0 * * * *'
-    buildCommand: npm ci && npm run build
-    startCommand: npm run run:cron
-    envVars:
-      - key: RENDER_API_KEY
-        sync: false
-      - key: RENDER_WORKFLOW_SLUG
-        value: briefly
+          - type: cron
+            name: briefly-hourly
+            runtime: node
+            region: frankfurt
+            plan: 0.5c-512mb
+            schedule: '0 * * * *'
+            buildCommand: npm ci && npm run build
+            startCommand: npm run run:cron
+            envVars:
+              - key: RENDER_API_KEY
+                sync: false
+              - key: RENDER_WORKFLOW_SLUG
+                value: briefly
 
-databases:
-  - name: briefly-db
-    databaseName: briefly
-    user: briefly
-    region: frankfurt
-    plan: free
+        databases:
+          - name: briefly-db
+            databaseName: briefly
+            user: briefly
+            region: frankfurt
+            plan: free
