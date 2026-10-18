@@ -35,6 +35,54 @@ describe('task extraction', () => {
     ]);
   });
 
+  it('drops a due date the source message does not state', async () => {
+    const undatedMessage = {
+      ...message,
+      text: 'I will prepare the onboarding notes.',
+    };
+    const model = {
+      complete: vi.fn().mockResolvedValue({
+        proposals: [
+          {
+            sourceTs: undatedMessage.ts,
+            title: 'Prepare onboarding notes',
+            ownerId: 'U1',
+            dueAt: '2026-10-18T00:00:00.000Z',
+          },
+        ],
+      }),
+    };
+
+    await expect(
+      extractTasks([undatedMessage], [], model),
+    ).resolves.toMatchObject([{ dueAt: null }]);
+  });
+
+  it('keeps a due date when its exact source evidence resolves to that date', async () => {
+    const datedMessage = {
+      ...message,
+      ts: '1792333442.000000',
+      text: 'I will prepare the onboarding notes by 5 November 2026.',
+    };
+    const model = {
+      complete: vi.fn().mockResolvedValue({
+        proposals: [
+          {
+            sourceTs: datedMessage.ts,
+            title: 'Prepare onboarding notes',
+            ownerId: 'U1',
+            dueAt: '2026-11-05T00:00:00.000Z',
+            dueDateEvidence: 'by 5 November 2026',
+          },
+        ],
+      }),
+    };
+
+    await expect(
+      extractTasks([datedMessage], [], model),
+    ).resolves.toMatchObject([{ dueAt: '2026-11-05T00:00:00.000Z' }]);
+  });
+
   it('discards a model proposal that points outside its source context', async () => {
     const model = {
       complete: vi.fn().mockResolvedValue({
