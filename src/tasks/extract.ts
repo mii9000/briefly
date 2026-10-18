@@ -32,12 +32,14 @@ export async function extractTasks(
   );
 
   return output.proposals
-    .filter((proposal) => allowedSources.has(proposal.sourceTs))
+    .filter(
+      (proposal) =>
+        allowedSources.has(proposal.sourceTs) &&
+        (!proposal.dueAt || !Number.isNaN(Date.parse(proposal.dueAt))),
+    )
     .map((proposal) => {
       if (proposal.ownerId && !allowedOwners.has(proposal.ownerId))
         throw new Error('Proposal owner is not identified in context');
-      if (proposal.dueAt && Number.isNaN(Date.parse(proposal.dueAt)))
-        throw new Error('Proposal due date is invalid');
       return proposal;
     })
     .filter(

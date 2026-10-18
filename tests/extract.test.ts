@@ -52,6 +52,23 @@ describe('task extraction', () => {
     await expect(extractTasks([message], [], model)).resolves.toEqual([]);
   });
 
+  it('discards a model proposal with an invalid due date', async () => {
+    const model = {
+      complete: vi.fn().mockResolvedValue({
+        proposals: [
+          {
+            sourceTs: message.ts,
+            title: 'Send the report',
+            ownerId: null,
+            dueAt: 'next week',
+          },
+        ],
+      }),
+    };
+
+    await expect(extractTasks([message], [], model)).resolves.toEqual([]);
+  });
+
   it('persists one task when the same source is retried', async () => {
     const records = new Set<string>();
     const db = {
