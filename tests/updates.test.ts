@@ -153,6 +153,7 @@ describe('task updates', () => {
       expect(request.response_format.json_schema.name).toBe(
         'briefly_task_reply',
       );
+      expect(fetchMock.mock.calls[0]![1]!.signal).toBeInstanceOf(AbortSignal);
     } finally {
       vi.unstubAllGlobals();
     }

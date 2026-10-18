@@ -204,6 +204,7 @@ export function createOpenRouterModel(apiKey: string): ModelClient {
         'https://openrouter.ai/api/v1/chat/completions',
         {
           method: 'POST',
+          signal: AbortSignal.timeout(30_000),
           headers: {
             Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
