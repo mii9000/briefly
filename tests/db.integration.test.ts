@@ -45,6 +45,17 @@ describe.skipIf(!pool)('Postgres integration', () => {
 
       expect(await db.hasImportStarted(channelId)).toBe(true);
       expect((await db.getTaskForSource(channelId, parentTs))?.id).toBe(taskId);
+      await db.claimDelivery({
+        key: `dm:${taskId}`,
+        channelId,
+        taskId,
+        recipientId: 'U1',
+        text: 'Reminder',
+      });
+      await db.markDelivered(`dm:${taskId}`, taskId, 'dm', new Date(), '203');
+      expect(await db.getTaskForReminder('U1', '203')).toMatchObject({
+        id: taskId,
+      });
       await expect(
         db.updateTask(taskId, 'U2', { type: 'reassign', ownerId: 'U3' }),
       ).resolves.toBeNull();

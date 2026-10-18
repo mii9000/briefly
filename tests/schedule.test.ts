@@ -54,7 +54,13 @@ describe('scheduled follow-ups', () => {
     );
 
     expect(db.markProposalMessage).toHaveBeenCalledWith(task.id, '203');
-    expect(db.markDelivered).toHaveBeenCalled();
+    expect(db.markDelivered).toHaveBeenCalledWith(
+      `proposal:${task.id}`,
+      task.id,
+      undefined,
+      expect.any(Date),
+      '203',
+    );
   });
 
   it('DMs after 48 hours, escalates after 72, and repeats the DM after another 48', async () => {
@@ -93,9 +99,11 @@ describe('scheduled follow-ups', () => {
       `dm:${task.id}:${task.lastUpdatedAt}`,
     ]);
     expect(first[0]?.text).toContain('Reply in this message’s thread');
+    expect(first[0]?.text).not.toContain(task.id);
     expect(thirdDay.map((item) => item.key)).toContain(
       `escalation:${task.id}:${task.lastUpdatedAt}`,
     );
+    expect(thirdDay[0]?.text).not.toContain(task.id);
     expect(nextDm.map((item) => item.key)).toContain(
       `dm:${task.id}:2026-10-17T00:00:00.000Z`,
     );

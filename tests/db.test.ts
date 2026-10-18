@@ -2,6 +2,34 @@ import { describe, expect, it, vi } from 'vitest';
 import { createDb } from '../src/db/queries.js';
 
 describe('database deliveries', () => {
+  it('finds a task from the owner and Slack reminder timestamp', async () => {
+    const query = vi.fn().mockResolvedValue({
+      rows: [
+        {
+          id: 'task-1',
+          channel_id: 'C1',
+          source_ts: '101',
+          title: 'Task',
+          owner_id: 'U1',
+          due_at: null,
+          status: 'open',
+          last_updated_at: '2026-10-18T14:41:00.000Z',
+          last_dm_at: null,
+          escalated_at: null,
+        },
+      ],
+    });
+    const db = createDb({ query } as never);
+
+    await expect(db.getTaskForReminder('U1', '203')).resolves.toMatchObject({
+      id: 'task-1',
+    });
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('slack_message_ts'),
+      ['U1', '203'],
+    );
+  });
+
   it('loads the Slack timestamp for a task proposal', async () => {
     const query = vi.fn().mockResolvedValue({
       rows: [

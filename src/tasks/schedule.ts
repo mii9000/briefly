@@ -26,7 +26,7 @@ export async function collectDueWork(
         channelId: task.channelId,
         recipientId: task.ownerId,
         taskId: task.id,
-        text: `Please update task ${task.id}: ${task.title}\nReply in this message’s thread to confirm, correct, complete, or suggest a new owner.`,
+        text: `Please update ${task.title}. Reply in this message’s thread to confirm, correct, complete, or suggest a new owner.`,
       };
       if (await db.claimDelivery(delivery)) deliveries.push(delivery);
     }
@@ -39,7 +39,7 @@ export async function collectDueWork(
         key: `escalation:${task.id}:${task.lastUpdatedAt}`,
         channelId: task.channelId,
         taskId: task.id,
-        text: `Task ${task.id} has had no update for three days: ${task.title}`,
+        text: `${task.title} has had no update for three days.`,
       };
       if (await db.claimDelivery(delivery)) deliveries.push(delivery);
     }
@@ -105,9 +105,12 @@ export async function deliver(
       item.taskId
         ? item.key.startsWith('dm:')
           ? 'dm'
-          : 'escalation'
+          : item.key.startsWith('escalation:')
+            ? 'escalation'
+            : undefined
         : undefined,
       now,
+      response.ts,
     );
   } catch (error) {
     const status =

@@ -159,6 +159,7 @@ describe('task updates', () => {
     const page = await renderTaskList('C1', 1, db);
 
     expect(page.text).toContain('Send report');
+    expect(page.text).not.toContain(task.id);
     expect(page.text).not.toContain('Private task');
     expect(db.listTasks).toHaveBeenCalledWith('C1', expect.any(Number), 0);
   });

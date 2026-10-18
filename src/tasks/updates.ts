@@ -97,7 +97,7 @@ export async function renderTaskList(
       const due = task.dueAt
         ? new Date(task.dueAt).toLocaleDateString('en-GB')
         : 'date unknown';
-      return `• ${task.title} — ${owner} — ${due} — ${task.status} (task ${task.id})`;
+      return `• ${task.title} — ${owner} — ${due} — ${task.status}`;
     })
     .join('\n');
   return {

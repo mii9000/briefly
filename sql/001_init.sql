@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS deliveries (
 );
 
 CREATE INDEX IF NOT EXISTS deliveries_pending_idx ON deliveries (status, created_at);
+ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS slack_message_ts text;
 
 ALTER TABLE deliveries DROP CONSTRAINT IF EXISTS deliveries_status_check;
 ALTER TABLE deliveries ADD CONSTRAINT deliveries_status_check

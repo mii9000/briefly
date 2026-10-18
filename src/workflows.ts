@@ -91,11 +91,14 @@ async function updateLinkedTask(
   if (!event.channel || !event.user) return false;
   let task: Task | null = null;
   if (event.channel_type === 'im') {
+    task = event.thread_ts
+      ? await deps.db.getTaskForReminder(event.user, event.thread_ts)
+      : null;
     const id = context
       .map((message) => message.text)
       .join('\n')
       .match(/task ([0-9a-f-]{36})/i)?.[1];
-    if (id) task = await deps.db.getTask(id);
+    if (!task && id) task = await deps.db.getTask(id);
   } else if (event.thread_ts) {
     task = await deps.db.getTaskForSource(event.channel, event.thread_ts);
   }

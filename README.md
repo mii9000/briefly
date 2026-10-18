@@ -13,7 +13,7 @@ Render Workflows provide durable task execution and retries. Postgres owns task 
 - `channels`: joined time, history cursor, import boundary, completion time.
 - `source_messages`: channel and Slack timestamp, thread parent, user, processing marker. No message body is stored.
 - `tasks`: proposal title, source timestamp, optional owner/date, status, and reminder timestamps. `(channel_id, source_ts, title)` is unique for retries.
-- `deliveries`: idempotency key, target, message/blocks, and status (`pending`, `sending`, `sent`, `failed`, `uncertain`). Pending sends are atomically claimed; a stale in-flight send is held as uncertain instead of being blindly repeated.
+- `deliveries`: idempotency key, target, message/blocks, Slack message timestamp, and status (`pending`, `sending`, `sent`, `failed`, `uncertain`). The timestamp links private reminder replies to their task without exposing task IDs. Pending sends are atomically claimed; a stale in-flight send is held as uncertain instead of being blindly repeated.
 
 See [sql/001_init.sql](sql/001_init.sql).
 

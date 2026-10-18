@@ -114,6 +114,16 @@ export function createDb(pool: Pool) {
       );
       return rows[0] ? rowToTask(rows[0]) : null;
     },
+    async getTaskForReminder(ownerId: string, messageTs: string) {
+      const { rows } = await pool.query(
+        `SELECT tasks.* FROM tasks
+         JOIN deliveries ON deliveries.task_id = tasks.id
+         WHERE deliveries.recipient_id = $1 AND deliveries.slack_message_ts = $2
+         LIMIT 1`,
+        [ownerId, messageTs],
+      );
+      return rows[0] ? rowToTask(rows[0]) : null;
+    },
     async markProposalMessage(taskId: string, messageTs: string) {
       await pool.query(
         'UPDATE tasks SET proposal_message_ts = $2 WHERE id = $1',
@@ -212,13 +222,14 @@ export function createDb(pool: Pool) {
       taskId?: string,
       kind?: 'dm' | 'escalation',
       now = new Date(),
+      messageTs?: string,
     ) {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
         await client.query(
-          "UPDATE deliveries SET status = 'sent', updated_at = now() WHERE delivery_key = $1",
-          [key],
+          "UPDATE deliveries SET status = 'sent', slack_message_ts = $2, updated_at = now() WHERE delivery_key = $1",
+          [key, messageTs ?? null],
         );
         if (taskId && kind) {
           const column = kind === 'dm' ? 'last_dm_at' : 'escalated_at';
