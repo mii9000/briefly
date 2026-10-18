@@ -35,7 +35,7 @@ describe('task extraction', () => {
     ]);
   });
 
-  it('rejects a model proposal that points outside its source context', async () => {
+  it('discards a model proposal that points outside its source context', async () => {
     const model = {
       complete: vi.fn().mockResolvedValue({
         proposals: [
@@ -49,7 +49,7 @@ describe('task extraction', () => {
       }),
     };
 
-    await expect(extractTasks([message], [], model)).rejects.toThrow();
+    await expect(extractTasks([message], [], model)).resolves.toEqual([]);
   });
 
   it('persists one task when the same source is retried', async () => {
