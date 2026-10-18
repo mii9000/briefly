@@ -90,6 +90,70 @@ describe('channel history', () => {
     expect(deps.process).toHaveBeenCalledTimes(2);
   });
 
+  it('ignores bot messages while importing history and thread context', async () => {
+    const saved: SourceMessage[] = [];
+    const processed: SourceMessage[] = [];
+    const slack = {
+      conversations: {
+        history: vi.fn().mockResolvedValue({
+          messages: [
+            { ts: '2678500', text: 'Briefly proposal', bot_id: 'B1' },
+            {
+              ts: '2678501',
+              text: 'Human discussion',
+              user: 'U1',
+              reply_count: 2,
+            },
+          ],
+        }),
+        replies: vi.fn().mockResolvedValue({
+          messages: [
+            { ts: '2678501', text: 'Human discussion', user: 'U1' },
+            {
+              ts: '2678502',
+              thread_ts: '2678501',
+              text: 'Briefly proposal reply',
+              bot_id: 'B1',
+            },
+            {
+              ts: '2678503',
+              thread_ts: '2678501',
+              text: 'I will handle it',
+              user: 'U2',
+            },
+          ],
+        }),
+      },
+    };
+    const deps = {
+      slack,
+      db: {
+        startImport: vi.fn(),
+        getImportCursor: vi.fn(async () => null),
+        saveSource: vi.fn(async (message: SourceMessage) => {
+          saved.push(message);
+          return true;
+        }),
+        saveCheckpoint: vi.fn(),
+      },
+      process: vi.fn(
+        async (message: SourceMessage, _context: SourceMessage[]) => {
+        processed.push(message);
+        },
+      ),
+      now: new Date(31 * 24 * 60 * 60 * 1000),
+    };
+
+    await importChannel('C1', new Date(0), deps);
+
+    expect(saved.map(({ ts }) => ts)).toEqual(['2678501', '2678503']);
+    expect(processed.map(({ ts }) => ts)).toEqual(['2678501', '2678503']);
+    expect(deps.process.mock.calls[1]?.[1].map(({ ts }) => ts)).toEqual([
+      '2678501',
+      '2678503',
+    ]);
+  });
+
   it('loads replies to an old parent when a new reply arrives live', async () => {
     const context = await loadMessageContext(
       {

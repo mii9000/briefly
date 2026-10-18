@@ -90,7 +90,9 @@ export async function importChannel(
           : oldestTs;
       const context = parent.reply_count
         ? await loadThread(channelId, parent, deps.slack)
-        : [toSource(channelId, parent)];
+        : parent.bot_id
+          ? []
+          : [toSource(channelId, parent)];
       for (const source of context) {
         if (await deps.db.saveSource(source))
           await deps.process(source, context);
@@ -140,7 +142,9 @@ async function loadThread(
       }),
     );
     messages.push(
-      ...(page.messages ?? []).map((message) => toSource(channelId, message)),
+      ...(page.messages ?? [])
+        .filter((message) => !message.bot_id)
+        .map((message) => toSource(channelId, message)),
     );
     cursor = page.response_metadata?.next_cursor || undefined;
   } while (cursor);
