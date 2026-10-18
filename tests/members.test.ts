@@ -42,7 +42,7 @@ describe('member directory', () => {
             id: 'U2',
             name: 'domas',
             real_name: 'Domas Cole',
-            profile: { display_name: 'Domas' },
+            profile: {},
           },
           { id: 'B1', name: 'Briefly', is_bot: true },
           { id: 'U4', name: 'deleted', deleted: true },
@@ -56,7 +56,7 @@ describe('member directory', () => {
 
     await expect(loadMemberDirectory({ users: { list } })).resolves.toEqual([
       { id: 'U1', names: ['Ibrahim', 'ibrahim'] },
-      { id: 'U2', names: ['Domas', 'Domas Cole', 'domas'] },
+      { id: 'U2', names: ['Domas Cole', 'Domas', 'domas'] },
       { id: 'U3', names: ['unmentioned'] },
     ]);
     expect(list).toHaveBeenNthCalledWith(1, { limit: 200, cursor: undefined });
