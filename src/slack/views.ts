@@ -1,3 +1,4 @@
+import type { ModalView } from '@slack/types';
 import type { Task } from '../types.js';
 
 export function proposalMessage(task: Task, sourceLink: string) {
@@ -35,7 +36,7 @@ export function ownerActionsMessage(task: Task, sourceLink: string) {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `*${task.title}*\nDue: ${due} · <${sourceLink}|source thread>\nReply in this DM thread to correct the title or due date, or suggest another owner.`,
+          text: `*${task.title}*\nDue: ${due} · <${sourceLink}|source thread>\nEdit the title or due date, or suggest a new owner with the controls below.`,
         },
       },
       ...(task.status === 'complete' || task.status === 'rejected'
@@ -50,6 +51,83 @@ export function ownerActionsMessage(task: Task, sourceLink: string) {
               ],
             },
           ]),
+    ],
+  };
+}
+
+export function taskCorrectionView(task: Task): ModalView {
+  return {
+    type: 'modal',
+    callback_id: 'task_edit_submission',
+    private_metadata: task.id,
+    title: { type: 'plain_text', text: 'Correct task' },
+    submit: { type: 'plain_text', text: 'Save changes' },
+    close: { type: 'plain_text', text: 'Cancel' },
+    blocks: [
+      {
+        type: 'input',
+        block_id: 'task_title',
+        label: { type: 'plain_text', text: 'Task title' },
+        element: {
+          type: 'plain_text_input',
+          action_id: 'title',
+          initial_value: task.title,
+          max_length: 240,
+        },
+      },
+      {
+        type: 'input',
+        block_id: 'task_due',
+        optional: true,
+        label: { type: 'plain_text', text: 'Due date' },
+        element: {
+          type: 'datepicker',
+          action_id: 'due_date',
+          ...(task.dueAt ? { initial_date: task.dueAt.slice(0, 10) } : {}),
+        },
+      },
+      {
+        type: 'input',
+        block_id: 'task_clear_due',
+        optional: true,
+        label: { type: 'plain_text', text: 'Due date options' },
+        element: {
+          type: 'checkboxes',
+          action_id: 'clear_due_date',
+          options: [
+            {
+              text: { type: 'plain_text', text: 'Remove due date' },
+              value: 'clear',
+            },
+          ],
+        },
+      },
+    ],
+  };
+}
+
+export function reassignmentView(task: Task): ModalView {
+  return {
+    type: 'modal',
+    callback_id: 'task_reassign_submission',
+    private_metadata: task.id,
+    title: { type: 'plain_text', text: 'Suggest reassignment' },
+    submit: { type: 'plain_text', text: 'Suggest owner' },
+    close: { type: 'plain_text', text: 'Cancel' },
+    blocks: [
+      {
+        type: 'input',
+        block_id: 'task_owner',
+        label: { type: 'plain_text', text: 'New owner' },
+        element: {
+          type: 'users_select',
+          action_id: 'owner',
+          placeholder: {
+            type: 'plain_text',
+            text: 'Choose a workspace member',
+          },
+        },
+      },
     ],
   };
 }

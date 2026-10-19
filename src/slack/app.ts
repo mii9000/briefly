@@ -9,6 +9,11 @@ import {
   renderTaskList,
 } from '../tasks/updates.js';
 import { ownerActionsDelivery, updateProposalMessage } from './proposals.js';
+import {
+  reassignmentMessage,
+  reassignmentView,
+  taskCorrectionView,
+} from './views.js';
 
 type Dependencies = {
   db: Db;
@@ -125,6 +130,130 @@ export function createSlackApp(deps: Dependencies) {
     );
   });
 
+  app.view('task_edit_submission', async ({ body, view, ack, client }) => {
+    await ack();
+    const task = await deps.db.getTask(view.private_metadata);
+    if (!task) return;
+    if (!task.ownerId || task.ownerId !== body.user.id) {
+      await client.chat.postEphemeral({
+        channel: task.channelId,
+        user: body.user.id,
+        text: `Only <@${task.ownerId}> can update this task.`,
+      });
+      return;
+    }
+
+    const values = view.state.values;
+    const title = values.task_title?.title?.value?.trim();
+    if (!title) return;
+    const dueDate = values.task_due?.due_date?.selected_date;
+    const clearDueDate =
+      values.task_clear_due?.clear_due_date?.selected_options?.some(
+        (option) => option.value === 'clear',
+      );
+    try {
+      const updated = await applyTaskUpdate(
+        task.id,
+        body.user.id,
+        {
+          type: 'edit',
+          title,
+          dueAt: clearDueDate
+            ? null
+            : dueDate
+              ? `${dueDate}T00:00:00.000Z`
+              : task.dueAt,
+        },
+        deps.db,
+      );
+      await updateProposalMessage(updated, client, deps.db);
+      await client.chat.postEphemeral({
+        channel: task.channelId,
+        user: body.user.id,
+        text: 'Task details updated.',
+      });
+    } catch (error) {
+      await client.chat.postEphemeral({
+        channel: task.channelId,
+        user: body.user.id,
+        text: error instanceof Error ? error.message : 'Could not update task.',
+      });
+    }
+  });
+
+  app.view('task_reassign_submission', async ({ body, view, ack, client }) => {
+    await ack();
+    const task = await deps.db.getTask(view.private_metadata);
+    if (!task) return;
+    if (!task.ownerId || task.ownerId !== body.user.id) {
+      await client.chat.postEphemeral({
+        channel: task.channelId,
+        user: body.user.id,
+        text: `Only <@${task.ownerId}> can update this task.`,
+      });
+      return;
+    }
+
+    const ownerId =
+      view.state.values.task_owner?.owner?.selected_user ?? undefined;
+    if (!ownerId || ownerId === task.ownerId) {
+      await client.chat.postEphemeral({
+        channel: task.channelId,
+        user: body.user.id,
+        text: 'Choose a different workspace member to suggest as owner.',
+      });
+      return;
+    }
+    try {
+      const updated = await applyTaskUpdate(
+        task.id,
+        body.user.id,
+        { type: 'reassign', ownerId },
+        deps.db,
+      );
+      await updateProposalMessage(updated, client, deps.db);
+      const message = reassignmentMessage(updated, body.user.id);
+      const key = `reassignment:${task.id}:${ownerId}:${view.id}`;
+      if (
+        await deps.db.claimDelivery({
+          key,
+          channelId: task.channelId,
+          taskId: task.id,
+          recipientId: ownerId,
+          text: message.text,
+          blocks: message.blocks,
+        })
+      ) {
+        try {
+          await deps.trigger.startTask(
+            'sendPending',
+            [],
+            `send-pending:${key}`,
+          );
+        } catch (error) {
+          console.error(
+            'Reassignment DM is queued for the next delivery run',
+            error,
+          );
+        }
+      }
+      await client.chat.postEphemeral({
+        channel: task.channelId,
+        user: body.user.id,
+        text: `Reassignment suggested to <@${ownerId}>. They need to accept the handoff.`,
+      });
+    } catch (error) {
+      await client.chat.postEphemeral({
+        channel: task.channelId,
+        user: body.user.id,
+        text:
+          error instanceof Error
+            ? error.message
+            : 'Could not suggest reassignment.',
+      });
+    }
+  });
+
   app.action(/task_/, async ({ action, body, ack, client }) => {
     await ack();
     if (
@@ -226,14 +355,25 @@ export function createSlackApp(deps: Dependencies) {
       action.action_id === 'task_edit' ||
       action.action_id === 'task_reassign'
     ) {
-      await client.chat.postEphemeral({
-        channel: channelId,
-        user: body.user.id,
-        text:
-          action.action_id === 'task_edit'
-            ? 'Reply in this DM thread with the corrected title and/or due date.'
-            : 'Reply in this DM thread and @mention the person who should own it. They must accept.',
-      });
+      if (!('trigger_id' in body)) return;
+      try {
+        await client.views.open({
+          trigger_id: body.trigger_id,
+          view:
+            action.action_id === 'task_edit'
+              ? taskCorrectionView(task)
+              : reassignmentView(task),
+        });
+      } catch (error) {
+        await client.chat.postEphemeral({
+          channel: channelId,
+          user: body.user.id,
+          text:
+            error instanceof Error
+              ? error.message
+              : 'Could not open task controls.',
+        });
+      }
       return;
     }
     const change =
