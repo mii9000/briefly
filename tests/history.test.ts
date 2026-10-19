@@ -30,7 +30,7 @@ describe('channel history', () => {
     expect(runImport).toHaveBeenCalledTimes(1);
   });
 
-  it('imports only the last 30 days and processes each parent and reply once across retries', async () => {
+  it('imports recent top-level messages only across retries', async () => {
     const saved = new Set<string>();
     const processed: string[] = [];
     const slack = {
@@ -85,12 +85,13 @@ describe('channel history', () => {
     expect(slack.conversations.history).toHaveBeenCalledWith(
       expect.objectContaining({ oldest: expect.any(String) }),
     );
-    expect(processed).toEqual(['2678500', '2678501']);
-    expect(deps.db.saveSource).toHaveBeenCalledTimes(4);
-    expect(deps.process).toHaveBeenCalledTimes(2);
+    expect(processed).toEqual(['2678500']);
+    expect(deps.db.saveSource).toHaveBeenCalledTimes(2);
+    expect(deps.process).toHaveBeenCalledTimes(1);
+    expect(slack.conversations.replies).not.toHaveBeenCalled();
   });
 
-  it('ignores bot messages while importing history and thread context', async () => {
+  it('imports a thread parent without importing replies', async () => {
     const saved: SourceMessage[] = [];
     const processed: SourceMessage[] = [];
     const slack = {
@@ -152,12 +153,12 @@ describe('channel history', () => {
 
     await importChannel('C1', new Date(0), deps);
 
-    expect(saved.map(({ ts }) => ts)).toEqual(['2678501', '2678503']);
-    expect(processed.map(({ ts }) => ts)).toEqual(['2678501', '2678503']);
-    expect(deps.process.mock.calls[1]?.[1].map(({ ts }) => ts)).toEqual([
+    expect(saved.map(({ ts }) => ts)).toEqual(['2678501']);
+    expect(processed.map(({ ts }) => ts)).toEqual(['2678501']);
+    expect(deps.process.mock.calls[0]?.[1].map(({ ts }) => ts)).toEqual([
       '2678501',
-      '2678503',
     ]);
+    expect(slack.conversations.replies).not.toHaveBeenCalled();
   });
 
   it('loads replies to an old parent when a new reply arrives live', async () => {

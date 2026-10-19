@@ -89,11 +89,8 @@ export async function importChannel(
         !oldestTs || Number(parent.ts) < Number(oldestTs)
           ? parent.ts
           : oldestTs;
-      const context = parent.reply_count
-        ? await loadThread(channelId, parent, deps.slack)
-        : parent.bot_id || parent.subtype
-          ? []
-          : [toSource(channelId, parent)];
+      const context =
+        parent.bot_id || parent.subtype ? [] : [toSource(channelId, parent)];
       for (const source of context) {
         if (await deps.db.saveSource(source))
           await deps.process(source, context);
