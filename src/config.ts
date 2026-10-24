@@ -25,6 +25,15 @@ const envSchema = z.object({
     .default('Europe/Amsterdam'),
 });
 
+const cronEnvSchema = z.object({
+  RENDER_API_KEY: z.string().min(1),
+  RENDER_WORKFLOW_SLUG: z.string().default('briefly'),
+});
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
   return envSchema.parse(env);
+}
+
+export function loadCronConfig(env: NodeJS.ProcessEnv = process.env) {
+  return cronEnvSchema.parse(env);
 }

@@ -99,7 +99,7 @@ export function createSlackApp(deps: Dependencies) {
       await deps.trigger.startTask(
         'importChannel',
         [event.channel, new Date().toISOString()],
-        `first-import:${event.channel}`,
+        `channel-join:${body.event_id}`,
       );
     }
   });

@@ -3,6 +3,40 @@ import { verifySlackRequest } from '@slack/bolt';
 import { createSlackApp } from '../src/slack/app.js';
 
 describe('Slack event trigger', () => {
+  it('starts a fresh history import when the bot rejoins a channel', async () => {
+    const trigger = { startTask: vi.fn().mockResolvedValue('run-1') };
+    const { app } = createSlackApp({
+      db: {} as never,
+      trigger,
+      signingSecret: 'secret',
+      token: 'token',
+      botUserId: 'B1',
+      botId: 'B1',
+    });
+
+    await app.processEvent({
+      body: {
+        type: 'event_callback',
+        event_id: 'EvRejoin',
+        event: {
+          type: 'member_joined_channel',
+          channel: 'C123',
+          user: 'B1',
+          channel_type: 'channel',
+          event_ts: '2.5',
+        },
+      },
+      ack: vi.fn(),
+      retryNum: undefined,
+    } as never);
+
+    expect(trigger.startTask).toHaveBeenCalledWith(
+      'importChannel',
+      ['C123', expect.any(String)],
+      'channel-join:EvRejoin',
+    );
+  });
+
   it('acknowledges /briefly before the task query finishes', async () => {
     let releaseTasks!: (tasks: never[]) => void;
     const pendingTasks = new Promise<never[]>((resolve) => {
